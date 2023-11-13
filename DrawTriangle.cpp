@@ -1,3 +1,4 @@
+
 #include "DrawTriangle.h"
 
 #pragma comment (lib, "d3dcompiler.lib")
@@ -8,10 +9,14 @@ void DrawTriangle::Initialize(HINSTANCE hInstance, int width, int height)
 
 	InitTriangle();
 	InitPipeline();
+
+	CreateTextureFromBMP();
 }
 
 void DrawTriangle::Destroy()
 {
+	mspTextureView.Reset();
+	mspTexture.Reset();
 	mspInputLayout.Reset();
 	mspVertexBuffer.Reset();
 	mspPixelShader.Reset();
@@ -23,13 +28,14 @@ void DrawTriangle::Destroy()
 void DrawTriangle::InitTriangle()
 {
 	VERTEX vertices[]{
-		{ 0.0f,  0.5f, 0.0f, { 1.0f, 0.0f, 0.0f, 1.0f} },
-		{ 0.5f, -0.5f, 0.0f, { 0.0f, 1.0f, 0.0f, 1.0f} },
-		{-0.5f, -0.5f, 0.0f, { 0.0f, 0.0f, 1.0f, 1.0f} }
+		{ -0.5f,	 0.5f, 0.0f, 0.0f, 0.0f},
+		{  0.5f,	 0.5f, 0.0f, 1.0f, 0.0f},
+		{ -0.5f,	-0.5f, 0.0f, 0.0f, 0.0f},
+		{  0.5f,	-0.5f, 0.0f, 1.0f, 0.0f}
 	};
 
 	CD3D11_BUFFER_DESC bd(
-		sizeof(VERTEX) * 3,
+		sizeof(vertices),
 		D3D11_BIND_VERTEX_BUFFER,
 		D3D11_USAGE_DYNAMIC,
 		D3D11_CPU_ACCESS_WRITE);
@@ -88,7 +94,7 @@ void DrawTriangle::InitPipeline()
 	D3D11_INPUT_ELEMENT_DESC ied[]
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
 	mspDevice->CreateInputLayout(
 		ied, 2,
@@ -98,12 +104,20 @@ void DrawTriangle::InitPipeline()
 	mspDeviceContext->IASetInputLayout(mspInputLayout.Get());
 }
 
+HRESULT DrawTriangle::CreateTextureFromBMP()
+{
+	std::ifstream ifs;
+	ifs.open("Textures/32.bmp", std::ifstream::binary);
+
+
+}
+
 void DrawTriangle::Render()
 {
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
 
 	mspDeviceContext->IASetVertexBuffers(0, 1, mspVertexBuffer.GetAddressOf(), &stride, &offset);
-	mspDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	mspDeviceContext->Draw(3, 0);
+	mspDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	mspDeviceContext->Draw(4, 0);
 }
