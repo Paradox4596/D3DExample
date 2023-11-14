@@ -1,4 +1,5 @@
-
+#include <fstream>
+#include <vector>
 #include "DrawTriangle.h"
 
 #pragma comment (lib, "d3dcompiler.lib")
@@ -18,6 +19,8 @@ void DrawTriangle::Destroy()
 	mspTextureView.Reset();
 	mspTexture.Reset();
 	mspInputLayout.Reset();
+	mspBlendState.Reset();
+	mspSamplerState.Reset();
 	mspVertexBuffer.Reset();
 	mspPixelShader.Reset();
 	mspVertexShader.Reset();
@@ -28,10 +31,10 @@ void DrawTriangle::Destroy()
 void DrawTriangle::InitTriangle()
 {
 	VERTEX vertices[]{
-		{ -0.5f,	 0.5f, 0.0f, 0.0f, 0.0f},
-		{  0.5f,	 0.5f, 0.0f, 1.0f, 0.0f},
-		{ -0.5f,	-0.5f, 0.0f, 0.0f, 0.0f},
-		{  0.5f,	-0.5f, 0.0f, 1.0f, 0.0f}
+		{ -0.5f, 0.5f, 0.0f, 0.0f, 0.0f },
+		{ 0.5f,  0.5f, 0.0f, 1.0f, 0.0f },
+		{-0.5f, -0.5f, 0.0f, 0.0f, 1.0f },
+		{ 0.5f, -0.5f, 0.0f, 1.0f, 1.0f }
 	};
 
 	CD3D11_BUFFER_DESC bd(
@@ -52,6 +55,34 @@ void DrawTriangle::InitTriangle()
 	);
 	memcpy(ms.pData, vertices, sizeof(vertices));
 	mspDeviceContext->Unmap(mspVertexBuffer.Get(), 0);
+
+	float border[4]{ 0.0f, 0.0f, 0.0f, 0.0f };
+	CD3D11_SAMPLER_DESC sd(
+		D3D11_FILTER_MIN_MAG_MIP_POINT,
+		D3D11_TEXTURE_ADDRESS_WRAP,
+		D3D11_TEXTURE_ADDRESS_WRAP,
+		D3D11_TEXTURE_ADDRESS_WRAP,
+		0.0f,
+		1,
+		D3D11_COMPARISON_ALWAYS,
+		border,
+		0,
+		1
+	);
+	mspDevice->CreateSamplerState(&sd, mspSamplerState.ReleaseAndGetAddressOf());
+
+	D3D11_BLEND_DESC blendDesc{};
+	ZeroMemory(&blendDesc, sizeof(D3D11_BLEND_DESC));
+	blendDesc.RenderTarget[0].BlendEnable = true;
+	blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	mspDevice->CreateBlendState(&blendDesc, mspBlendState.ReleaseAndGetAddressOf());
 }
 
 void DrawTriangle::InitPipeline()
@@ -109,7 +140,66 @@ HRESULT DrawTriangle::CreateTextureFromBMP()
 	std::ifstream ifs;
 	ifs.open("Textures/32.bmp", std::ifstream::binary);
 
+	BITMAPFILEHEADER bfh;
+	BITMAPINFOHEADER bih;
+	ifs.read(reinterpret_cast<char*>(&bfh), sizeof(BITMAPFILEHEADER));
+	ifs.read(reinterpret_cast<char*>(&bih), sizeof(BITMAPINFOHEADER));
 
+	std::vector<char> pixels(bih.biSizeImage);
+	ifs.seekg(bfh.bfOffBits);
+	int pitch = bih.biWidth * (bih.biBitCount / 8);
+
+	char r{}, g{}, b{}, a{};
+	int index{};
+	for (int y = bih.biHeight - 1; y >= 0; y--)
+	{
+		index = y * pitch;
+		for (int x = 0; x < bih.biWidth; x++)
+		{
+			ifs.read(&b, 1);
+			ifs.read(&g, 1);
+			ifs.read(&r, 1);
+			ifs.read(&a, 1);
+
+			if (static_cast<unsigned char>(r) == 30 &&
+				static_cast<unsigned char>(g) == 199 &&
+				static_cast<unsigned char>(b) == 250)
+			{
+				pixels[index] = pixels[index + 1] = pixels[index + 2] = pixels[index + 3] = 0;
+			}
+			else
+			{
+				pixels[index] = b;
+				pixels[index + 1] = g;
+				pixels[index + 2] = r;
+				pixels[index + 3] = a;
+			}
+
+			index += 4;
+		}
+	}
+
+	ifs.close();
+
+	CD3D11_TEXTURE2D_DESC td(
+		DXGI_FORMAT_B8G8R8A8_UNORM,
+		bih.biWidth, bih.biHeight,
+		1, 1
+	);
+	D3D11_SUBRESOURCE_DATA initData;
+	initData.pSysMem = &pixels[0];
+	initData.SysMemPitch = pitch;
+	initData.SysMemSlicePitch = 0;
+	mspDevice->CreateTexture2D(&td, &initData, mspTexture.ReleaseAndGetAddressOf());
+
+	CD3D11_SHADER_RESOURCE_VIEW_DESC srvd(
+		D3D11_SRV_DIMENSION_TEXTURE2D,
+		td.Format,
+		0, 1
+	);
+	mspDevice->CreateShaderResourceView(mspTexture.Get(), &srvd, mspTextureView.ReleaseAndGetAddressOf());
+
+	return S_OK;
 }
 
 void DrawTriangle::Render()
@@ -117,7 +207,11 @@ void DrawTriangle::Render()
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
 
+
 	mspDeviceContext->IASetVertexBuffers(0, 1, mspVertexBuffer.GetAddressOf(), &stride, &offset);
 	mspDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	mspDeviceContext->PSSetSamplers(0, 1, mspSamplerState.GetAddressOf());
+	mspDeviceContext->PSSetShaderResources(0, 1, mspTextureView.GetAddressOf());
+	mspDeviceContext->OMSetBlendState(mspBlendState.Get(), nullptr, 0xffffffff);
 	mspDeviceContext->Draw(4, 0);
 }
