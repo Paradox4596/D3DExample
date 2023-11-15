@@ -8,8 +8,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance,
 	DrawTriangle framework;
 
 	framework.Initialize(hInstance);
+
 	framework.GameLoop();
+	
 	framework.Destroy();
 
 	return 0;
 }
+

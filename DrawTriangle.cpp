@@ -31,7 +31,7 @@ void DrawTriangle::Destroy()
 void DrawTriangle::InitTriangle()
 {
 	VERTEX vertices[]{
-		{ -0.5f, 0.5f, 0.0f, 0.0f, 0.0f },
+		{-0.5f,  0.5f, 0.0f, 0.0f, 0.0f },
 		{ 0.5f,  0.5f, 0.0f, 1.0f, 0.0f },
 		{-0.5f, -0.5f, 0.0f, 0.0f, 1.0f },
 		{ 0.5f, -0.5f, 0.0f, 1.0f, 1.0f }
@@ -44,7 +44,7 @@ void DrawTriangle::InitTriangle()
 		D3D11_CPU_ACCESS_WRITE);
 
 	mspDevice->CreateBuffer(&bd, nullptr, mspVertexBuffer.ReleaseAndGetAddressOf());
-
+	
 	D3D11_MAPPED_SUBRESOURCE ms;
 	mspDeviceContext->Map(
 		mspVertexBuffer.Get(),
@@ -56,7 +56,7 @@ void DrawTriangle::InitTriangle()
 	memcpy(ms.pData, vertices, sizeof(vertices));
 	mspDeviceContext->Unmap(mspVertexBuffer.Get(), 0);
 
-	float border[4]{ 0.0f, 0.0f, 0.0f, 0.0f };
+	float border[4]{ 0.0f, 0.0f, 0.0f, 0.0f};
 	CD3D11_SAMPLER_DESC sd(
 		D3D11_FILTER_MIN_MAG_MIP_POINT,
 		D3D11_TEXTURE_ADDRESS_WRAP,
@@ -87,7 +87,7 @@ void DrawTriangle::InitTriangle()
 
 void DrawTriangle::InitPipeline()
 {
-	// Blob = Binary Large OBject
+	// Binary Large OBject 
 	Microsoft::WRL::ComPtr<ID3DBlob> spVS;
 	Microsoft::WRL::ComPtr<ID3DBlob> spPS;
 
@@ -101,7 +101,8 @@ void DrawTriangle::InitPipeline()
 		0,
 		spVS.GetAddressOf(),
 		nullptr
-	);
+		);
+
 	D3DCompileFromFile(
 		L"PixelShader.hlsl",
 		0,
@@ -127,7 +128,7 @@ void DrawTriangle::InitPipeline()
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
-	mspDevice->CreateInputLayout(
+	mspDevice->CreateInputLayout( 
 		ied, 2,
 		spVS->GetBufferPointer(), spVS->GetBufferSize(),
 		mspInputLayout.ReleaseAndGetAddressOf()
@@ -161,18 +162,18 @@ HRESULT DrawTriangle::CreateTextureFromBMP()
 			ifs.read(&r, 1);
 			ifs.read(&a, 1);
 
-			if (static_cast<unsigned char>(r) == 30 &&
-				static_cast<unsigned char>(g) == 199 &&
+			if (static_cast<unsigned char>(r) == 30 && 
+				static_cast<unsigned char>(g) == 199 && 
 				static_cast<unsigned char>(b) == 250)
 			{
-				pixels[index] = pixels[index + 1] = pixels[index + 2] = pixels[index + 3] = 0;
+				pixels[index] = pixels[index+1] = pixels[index+2] = pixels[index+3] = 0;
 			}
 			else
 			{
 				pixels[index] = b;
-				pixels[index + 1] = g;
-				pixels[index + 2] = r;
-				pixels[index + 3] = a;
+				pixels[index+1] = g;
+				pixels[index+2] = r;
+				pixels[index+3] = a;
 			}
 
 			index += 4;
@@ -180,6 +181,7 @@ HRESULT DrawTriangle::CreateTextureFromBMP()
 	}
 
 	ifs.close();
+
 
 	CD3D11_TEXTURE2D_DESC td(
 		DXGI_FORMAT_B8G8R8A8_UNORM,
@@ -206,7 +208,6 @@ void DrawTriangle::Render()
 {
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
-
 
 	mspDeviceContext->IASetVertexBuffers(0, 1, mspVertexBuffer.GetAddressOf(), &stride, &offset);
 	mspDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);

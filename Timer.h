@@ -5,7 +5,7 @@ namespace MyUtil
 	class Timer
 	{
 	private:
-		double mdDeltatime;
+		double mdDeltaTime;
 		float mfScale;
 		bool mbStopped;
 
@@ -30,3 +30,4 @@ namespace MyUtil
 		void SetScale(float scale);
 	};
 }
+

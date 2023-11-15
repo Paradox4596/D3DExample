@@ -1,4 +1,5 @@
-ï»¿#include "D3DFramework.h"
+#include <sstream>
+#include "D3DFramework.h"
 
 #pragma comment (lib, "d3d11.lib")
 
@@ -7,6 +8,7 @@ void D3DFramework::InitWindow(HINSTANCE hInstance)
 	WNDCLASSEX wc{};
 
 	mInstance = hInstance;
+	mTitleText = TITLE;
 
 	wc.style = CS_HREDRAW | CS_VREDRAW;
 	wc.lpszClassName = CLASSNAME.c_str();
@@ -22,11 +24,11 @@ void D3DFramework::InitWindow(HINSTANCE hInstance)
 		return;
 	}
 
-	RECT wr{ 0,0,mScreenWidth, mScreenHeight };
+	RECT wr{ 0, 0, mScreenWidth, mScreenHeight };
 	AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
 	mHwnd = CreateWindowEx(NULL,
 		CLASSNAME.c_str(),
-		TITLE.c_str(),
+		mTitleText.c_str(),
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
@@ -35,14 +37,14 @@ void D3DFramework::InitWindow(HINSTANCE hInstance)
 		NULL,
 		NULL,
 		hInstance,
-		NULL
-	);
+		NULL);
 
 	if (mHwnd == NULL)
 	{
-		MessageBox(NULL, L"Failed to create window!", L"ERROR", MB_OK);
+		MessageBox(NULL, L"Failed to create window!", L"Error", MB_OK);
 		return;
 	}
+
 	SetWindowLongPtr(mHwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 
 	ShowWindow(mHwnd, SW_SHOW);
@@ -55,13 +57,13 @@ void D3DFramework::InitD3D()
 {
 	DXGI_SWAP_CHAIN_DESC scd{};
 	ZeroMemory(&scd, sizeof(DXGI_SWAP_CHAIN_DESC));
-	scd.BufferCount = 1;	 //back buffer count
+	scd.BufferCount = 1;	// back buffer count
 	scd.BufferDesc.Width = mScreenWidth;
 	scd.BufferDesc.Height = mScreenHeight;
 	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	scd.OutputWindow = mHwnd;
-	scd.SampleDesc.Count = 1; //MSAA : Multi Sampling Anti-Aliasing
+	scd.SampleDesc.Count = 1; // MSAA : Multi Sampling Anti-Aliasing
 	scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 	scd.Windowed = TRUE;
 
@@ -76,10 +78,32 @@ void D3DFramework::InitD3D()
 		mspSwapChain.ReleaseAndGetAddressOf(),
 		mspDevice.ReleaseAndGetAddressOf(),
 		nullptr,
-		mspDeviceContext.ReleaseAndGetAddressOf()
-	);
+		mspDeviceContext.ReleaseAndGetAddressOf());
 
 	OnResize();
+}
+
+void D3DFramework::CalculateFPS()
+{
+	static int frameCount{ 0 };
+	static float timeElapsed{ 0.0f };
+
+	frameCount++;
+
+	if ( mTimer.TotalTime() - timeElapsed >= 1.0f )
+	{
+		float fps = (float)frameCount;
+		float mspf = 1000.0f / fps;
+
+		std::wostringstream oss;
+		oss.precision(6);
+		oss << mTitleText << L" - " << L"FPS: " << fps << ", FrameTime: " << mspf << L"ms";
+
+		SetWindowText(mHwnd, oss.str().c_str());
+
+		frameCount = 0;
+		timeElapsed += 1.0f;
+	}
 }
 
 void D3DFramework::OnResize()
@@ -95,12 +119,14 @@ void D3DFramework::OnResize()
 
 	mspSwapChain->ResizeBuffers(0, mScreenWidth, mScreenHeight, DXGI_FORMAT_UNKNOWN, 0);
 
+
 	mspSwapChain->GetBuffer(0, IID_PPV_ARGS(mspRenderTarget.ReleaseAndGetAddressOf()));
 	mspDevice->CreateRenderTargetView(
 		mspRenderTarget.Get(),
 		nullptr,
 		mspRenderTargetView.ReleaseAndGetAddressOf());
 
+	// Depth Stencil Resource - Texture
 	CD3D11_TEXTURE2D_DESC td(
 		DXGI_FORMAT_D24_UNORM_S8_UINT,
 		mScreenWidth,
@@ -111,12 +137,13 @@ void D3DFramework::OnResize()
 	);
 	mspDevice->CreateTexture2D(&td, nullptr, mspDepthStencil.ReleaseAndGetAddressOf());
 
-	//Depth Stencull View
+	// Depth Stencil View
 	CD3D11_DEPTH_STENCIL_VIEW_DESC dsvd(D3D11_DSV_DIMENSION_TEXTURE2D);
 	mspDevice->CreateDepthStencilView(
 		mspDepthStencil.Get(), &dsvd, mspDepthStencilView.ReleaseAndGetAddressOf());;
 
-	// Ã†Ã„Ã€ÃŒÃ‡ÃÂ¶Ã³Ã€ÃŽ Â¼Â³ÃÂ¤
+
+	// ÆÄÀÌÇÁ¶óÀÎ ¼³Á¤
 	mspDeviceContext->OMSetRenderTargets(
 		1, mspRenderTargetView.GetAddressOf(), mspDepthStencilView.Get()
 	);
@@ -128,25 +155,31 @@ void D3DFramework::OnResize()
 
 void D3DFramework::RenderFrame()
 {
-	float bg[4]{ 0.0f,0.2f,0.4f,1.0f };
+	float bg[4]{ 0.0f, 0.2f, 0.4f, 1.0f };
+
 	mspDeviceContext->ClearRenderTargetView(mspRenderTargetView.Get(), bg);
 	mspDeviceContext->ClearDepthStencilView(mspDepthStencilView.Get(),
 		D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
 		1.0f, 0);
 
 	Render();
+
 	mspSwapChain->Present(0, 0);
 }
 
 void D3DFramework::Render()
 {
+}
 
+void D3DFramework::Update(float delta)
+{
 }
 
 void D3DFramework::Initialize(HINSTANCE hInstance, int width, int height)
 {
 	mScreenWidth = width;
 	mScreenHeight = height;
+	mPaused = false;
 
 	InitWindow(hInstance);
 	InitD3D();
@@ -163,7 +196,7 @@ void D3DFramework::Destroy()
 
 	mspSwapChain.Reset();
 	mspDevice.Reset();
-	mspDevice.Reset();
+	mspDeviceContext.Reset();
 
 	DestroyWindow(mHwnd);
 	UnregisterClass(CLASSNAME.c_str(), mInstance);
@@ -171,6 +204,8 @@ void D3DFramework::Destroy()
 
 void D3DFramework::GameLoop()
 {
+	mTimer.Start();
+
 	MSG msg{};
 	while (true)
 	{
@@ -185,8 +220,18 @@ void D3DFramework::GameLoop()
 		}
 		else
 		{
-			//GAME
-			RenderFrame();
+			mTimer.Update();
+
+			if (mPaused)
+			{
+				Sleep(100);
+			}
+			else
+			{
+				CalculateFPS();
+				Update(mTimer.DeltaTime());
+				RenderFrame();
+			}
 		}
 	}
 }
@@ -195,87 +240,127 @@ LRESULT D3DFramework::MessageHandler(HWND hwnd, UINT message, WPARAM wParam, LPA
 {
 	switch (message)
 	{
-	case WM_PAINT:
-	if (mResizing)
-	{
-		RenderFrame();
-	}
-	else
-	{
-		PAINTSTRUCT ps;
-		BeginPaint(hwnd, &ps);
-		EndPaint(hwnd, &ps);
-	}
-	break;
-	case WM_ERASEBKGND:
-	return 1;
-	break;
-	case WM_ENTERSIZEMOVE:
-	mResizing = true;
-	break;
-	case WM_SIZE:
-	mScreenWidth = LOWORD(lParam);
-	mScreenHeight = HIWORD(lParam);
-	if (!mspDevice)
-	{
-		break;
-	}
-	if (wParam == SIZE_MINIMIZED)
-	{
-		mMinimized = true;
-		mMaximized = false;
-	}
-	else if (wParam == SIZE_MAXIMIZED)
-	{
-		mMaximized = true;
-		mMinimized = false;
-		OnResize();
-	}
-	else if (wParam == SIZE_RESTORED)
-	{
-		if (mMinimized)
+	case WM_ACTIVATE:
+		if (LOWORD(wParam) == WA_INACTIVE)
 		{
-			mMinimized = false;
-			OnResize();
-		}
-		else if (mMaximized)
-		{
-			mMaximized = false;
-			OnResize();
-		}
-		else if (mResizing)
-		{
+			mPaused = true;
+			mTimer.Stop();
 		}
 		else
 		{
+			mPaused = false;
+			mTimer.Resume();
+		}
+		break;
+
+	case WM_PAINT:
+		if (mResizing)
+		{
+			RenderFrame();
+		}
+		else
+		{
+			PAINTSTRUCT ps;
+			BeginPaint(hwnd, &ps);
+			EndPaint(hwnd, &ps);
+		}
+		break;
+
+	case WM_ERASEBKGND:
+		return 1;
+		break;
+
+	case WM_ENTERSIZEMOVE:
+		mPaused = true;
+		mResizing = true;
+		mTimer.Stop();
+		break;
+
+	case WM_SIZE:
+		mScreenWidth = LOWORD(lParam);
+		mScreenHeight = HIWORD(lParam);
+
+		if (!mspDevice)
+		{
+			break;
+		}
+
+		if (wParam == SIZE_MINIMIZED)
+		{
+			if (!mPaused)
+			{
+				mTimer.Stop();
+			}
+			mPaused = true;
+			mMinimized = true;
+			mMaximized = false;
+		}
+		else if (wParam == SIZE_MAXIMIZED)
+		{
+			mTimer.Resume();
+			mPaused = false;
+			mMaximized = true;
+			mMinimized = false;
 			OnResize();
 		}
-	}
-	break;
+		else if (wParam == SIZE_RESTORED)
+		{
+			if (mMinimized)
+			{
+				mPaused = false;
+				mTimer.Resume();
+				mMinimized = false;
+				OnResize();
+			}
+			else if (mMaximized)
+			{
+				mPaused = false;
+				mTimer.Resume();
+				mMaximized = false;
+				OnResize();
+			}
+			else if (mResizing)
+			{
+			}
+			else
+			{
+				mPaused = false;
+				mTimer.Resume();
+				OnResize();
+			}
+		}
+		break;
+
 	case WM_GETMINMAXINFO:
-	reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.x = 640;
-	reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.y = 480;
-	break;
+		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.x = 640;
+		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.y = 480;
+		break;
+
 	case WM_EXITSIZEMOVE:
-	mResizing = false;
-	OnResize();
-	break;
+		mPaused = false;
+		mResizing = false;
+		mTimer.Resume();
+		OnResize();
+		break;
+
 	case WM_MENUCHAR:
-	return MAKELRESULT(0, MNC_CLOSE);
-	break;
+		return MAKELRESULT(0, MNC_CLOSE);
+		break;
+
 	case WM_CLOSE:
-	DestroyWindow(hwnd);
-	break;
+		DestroyWindow(hwnd);
+		break;
 	case WM_DESTROY:
-	PostQuitMessage(0);
-	break;
+		PostQuitMessage(0);
+		break;
 	default:
-	return DefWindowProc(hwnd, message, wParam, lParam);
+		return DefWindowProc(hwnd, message, wParam, lParam);
 	}
+
 	return 0;
 }
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	auto pFramework = reinterpret_cast<D3DFramework*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 

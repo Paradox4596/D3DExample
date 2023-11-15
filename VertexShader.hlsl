@@ -4,12 +4,12 @@ struct VOut
     float2 tex : TEXCOORD0;
 };
 
-VOut main(float4 pos : POSITION, float2 tex : TEXCOORD0)
+VOut main( float4 pos : POSITION, float2 tex : TEXCOORD0 )
 {
     VOut output;
     
     output.position = pos;
     output.tex = tex;
     
-    return output;
+	return output;
 }

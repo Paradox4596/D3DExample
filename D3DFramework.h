@@ -5,11 +5,13 @@
 #include <wrl/client.h>
 #include <d3d11.h>
 #include <string>
+#include "Timer.h"
+#include "Input.h"
 
 class D3DFramework
 {
-	const std::wstring CLASSNAME{ L"D3DWindowClass" };
-	const std::wstring TITLE{ L"Direct3D Example" };
+	const std::wstring CLASSNAME { L"D3DWindowClass" };
+	const std::wstring TITLE { L"Direct3D Example" };
 
 protected:
 	int mScreenWidth{ 800 };
@@ -17,11 +19,13 @@ protected:
 	bool mMinimized{ false };
 	bool mMaximized{ false };
 	bool mResizing{ false };
+	bool mPaused{ false };
 
 	HWND mHwnd{};
 	HINSTANCE mInstance{};
+	MyUtil::Timer mTimer;
+	std::wstring mTitleText{};
 
-	// Interface DirectX Graphics Infrastructure
 	Microsoft::WRL::ComPtr<IDXGISwapChain> mspSwapChain{};
 	Microsoft::WRL::ComPtr<ID3D11Device> mspDevice{};
 	Microsoft::WRL::ComPtr<ID3D11DeviceContext> mspDeviceContext{};
@@ -35,11 +39,13 @@ protected:
 private:
 	void InitWindow(HINSTANCE hInstance);
 	void InitD3D();
+	void CalculateFPS();
 
 protected:
 	void OnResize();
 	void RenderFrame();
 	virtual void Render();
+	virtual void Update(float delta);
 
 public:
 	virtual void Initialize(HINSTANCE hInstance, int width = 800, int height = 600);
@@ -51,3 +57,4 @@ public:
 };
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+
